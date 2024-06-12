@@ -1,0 +1,469 @@
+---
+title: "Assignment 2"
+author: "YOURNAME"
+date: "2023-10-30"
+output: html_document
+---
+
+# [NOTE]
+An important part of developing your R programming skills is learning to write clear, well-formatted code that is easy for another person to follow. For homework assignments, think of the person grading the code as the audience to whom you are trying to communicate. The easier it is to follow your code, the more likely it will be that you receive partial credit for answers that have minor errors.
+
+
+# Back to Assignment 2
+
+This assignment involves a variety of different datasets that we have seen in previous classes. For simplicity (and to ensure consistency across computer operating systems), I have saved all of the relevant data in an .RData file, which is loaded as follows:
+
+```{r}
+load("Assignment2data.RData")
+
+ls()
+```
+
+
+
+# STAR (13 pt)
+
+You will analyze part of the data from the Tennessee Student Teacher Achievement Ratio study (`STAR_g3` dataset). Project STAR was a large, block-randomized experiment that evaluated the effect of class size (the number of students per classroom) during the elementary grades on students' academic performance.
+
+
+1. Use `filter` to find the data for all of the black female students born in July of 1979:
+
+```{r message=FALSE, warning=FALSE}
+# R code here
+#load tidyverse library 
+library(tidyverse)
+
+#filter the data 
+Fstud<- STAR_g3%>%
+  filter(gender=="FEMALE", race=="BLACK", 
+         birthmonth=="JULY", birthyear==1979)
+#Data overview
+head(Fstud)
+```
+
+
+2. Use `select` to create a dataset containing the school and student id variables for all students, plus the three variables containing information about students' birthdates. 
+Print out the first 10 rows in this dataset.
+
+```{r}
+# R code here
+#2. 
+Birthstud<- STAR_g3%>%
+  select(cmpstype, stdntid, starts_with("birth"))
+
+#First 10 rows 
+head(Birthstud,10)
+```
+
+
+3. Use `mutate` and `paste()` to create variable containing each student's birth date in the form of a character string (e.g., `"JANUARY 12, 1981"`).
+Print out the first 10 rows in this dataset.
+
+```{r}
+# R code here
+#Add Birthday date to Birthstud dataset
+Birthstud<- Birthstud %>%
+  mutate(birthdate= paste(birthmonth," ", birthday,", ", birthyear))
+
+#first 10 rows 
+head(Birthstud, 10)
+```
+
+4. Use `summarise` to calculate the average reading scores (`g3treadss`) for males and females. (HINT: use `[]`.)
+
+```{r}
+# R code here
+#calculate the average reading scores by gender
+#calculate the average reading scores by gender
+STAR_g3[, c("g3treadss", "gender")]%>%
+  drop_na(gender)%>%
+  group_by(gender)%>%
+  summarise(avg_g3treadss= mean(g3treadss, na.rm = T))
+```
+
+5. Use `n_distinct()` inside of `summarize` to calculate the number of unique schools in the study.
+
+```{r}
+# R code here
+#number of unique schools 
+STAR_g3 %>%
+  summarise(number_of_unique_schools = n_distinct(g1schid))
+```
+
+6. Use `arrange` to sort the dataset of black females born in July of 1979 from highest to lowest math score.
+
+```{r}
+# R code here
+#arrange student in a descending order using math score
+Fstud<- Fstud%>%
+  arrange(desc(g3tmathss))
+head(Fstud$g3tmathss,10)
+```
+
+
+7. Building from your answer to Q4, use `filter` and `summarize` to calculate the average reading scores (`g3treadss`) for males and females from urban schools. 
+
+```{r}
+# R code here
+#average reading scores (`g3treadss`) for males and females from urban schools
+STAR_g3[, c("g3treadss", "gender","g1surban")]%>%
+  drop_na(gender)%>%
+  filter(g1surban=="URBAN")%>%
+  group_by(gender)%>%
+  summarise(avg_g3treadss= mean(g3treadss, na.rm = T))
+```
+
+8. Use `group_by` to calculate the average test scores (including reading, math, language, and listening) for males and females from urban schools. The result should be a `dataframe` with a row for males and a row for females and separate columns containing average test scores for each of the four domains. 
+
+```{r}
+# R code here
+STAR_g3[, c("g3tmathss","g3tlangss","g3tlangss" ,
+            "g3treadss", "gender","g1surban")]%>%
+  drop_na(gender)%>%
+  filter(g1surban=="URBAN")%>%
+  group_by(gender)%>%
+  summarise(avg_g3tmathss= mean(g3tmathss, na.rm = T),
+            avg_g3tlangss= mean(g3tlangss, na.rm = T),
+            avg_g3tlangss= mean(g3tlangss, na.rm = T),
+            avg_g3treadss= mean(g3treadss, na.rm = T),
+  )%>%
+  as.data.frame()
+```
+
+9. The `n()` function calculates the number of observations in a dataset. It is useful inside of `summarize`, particularly when combined with `group_by`, for calculating the number of observations within levels of a grouping variable. Use these functions to calculate the number of students in the study born in each year from 1977 to 1981. 
+
+```{r}
+# R code here
+#number of students in the study born in each year from 1977 to 1981
+
+students_by_birth_year <- STAR_g3%>%
+  filter(birthyear >= 1977 & birthyear <= 1981) %>%  # Filtering data for the specified years
+  group_by(birthyear) %>%
+  summarise(number_of_students = n())
+students_by_birth_year
+```
+
+
+10. Create a dataset that reports the number of schools and the number of students by urbanicity. Use `g1surban` to define urbanicity, but combine `INNER CITY` and `URBAN` schools into a single category. 
+
+```{r}
+# R code here
+urbanicity_data <- STAR_g3 %>%
+  mutate(g1surban = ifelse(g1surban %in% c("INNER CITY", "URBAN"),
+                                 "URBAN", as.character(g1surban))) %>%
+  group_by(g1surban) %>%
+  summarise(number_of_schools = n_distinct(g1schid),
+            number_of_students = n())
+
+urbanicity_data
+```
+
+
+11. Create a dataset that reports the proportion of white students, proportion of black students, and proportion of students from any other races within each school. 
+Use the result to identify the ten schools with the largest percentage of black students. (Print out the result.)
+Also, answer: Are these schools in urban, suburban, or rural areas?
+
+```{r}
+# R code here
+school_proportions <- STAR_g3 %>%
+  group_by(g1schid, race) %>%
+  summarise(count = n())%>%
+  mutate(prop = count / sum(count),
+         count=NULL)%>%
+  pivot_wider(names_from = race, values_from =prop, values_fill = 0)
+
+school_proportions%>%
+  arrange(desc(BLACK))%>%
+  select(g1schid,BLACK)%>%
+  head(10)
+```
+
+
+12.  Let $X_{ij}$ denote a score for unit $i$ in school $j$. The _group-mean centered_ variable $\tilde{X}_{ij}$ is calculated by subtracting the mean for all units in a given school $j$, $\bar{X}_j = \sum_{i=1}^{n_j} X_{ij}$, from the raw score:
+    $$
+    \tilde{X}_{ij} = X_{ij} - \bar{X}_j.
+    $$
+
+Calculate the group-mean centered test scores for each of the four test score variables (i.e., 4 variables), __centering by school__. Use the `ungroup()` function so that the resulting dataset does not include any grouping variables.
+    
+Print out the first 10 rows of the dataset, selecting the new centered variables.
+    
+```{r}
+# R code here
+cen_scores <- STAR_g3 %>%
+  group_by(g1schid) %>%
+  drop_na(starts_with("g3"))%>%
+  mutate(
+    g3treadss_centered = g3treadss - mean(g3treadss, na.rm = T),
+    g3tmathss_centered = g3tmathss - mean(g3tmathss, na.rm = T),
+    g3tlangss_centered = g3tlangss - mean(g3tlangss, na.rm = T),
+    g3tlistss_centered = g3tlistss - mean(g3tlistss, na.rm = T)
+  ) %>%
+  ungroup()
+
+# Print out the first 10 rows with the new centered variables
+head(cen_scores[, c("g3treadss_centered", "g3tmathss_centered", "g3tlangss_centered", "g3tlistss_centered")], 10)
+
+
+
+```
+
+
+13. Calculate the correlations among the four group-mean centered test score variables (these are equivalent to the partial correlations, after controlling for the students' schools). How do these partial correlations compare to the corresponding bi-variate correlations among the raw test score variables?
+
+```{r}
+# R code here
+#partial correlations
+partial_corr<- cor(cen_scores %>% select(ends_with("centered")), method = "pearson")
+partial_corr
+
+bivariate_corr <- STAR_g3 %>% select(starts_with("g3t")) %>% drop_na()%>%
+                                       cor(method = "pearson")
+
+#bivariate correlations
+bivariate_corr
+```
+Partial and bivariate correlations, you'll notice that the partial correlations are generally slightly lower than the corresponding bivariate correlations.
+
+14. *[Bonus +1]*
+Calculate the __pooled, within-school standard deviations__ for each of the four test score variables, where the pooled within-school sample variance (the squared standard deviation) is defined as 
+    $$
+    S_{within}^2 = \frac{1}{N - G} \sum_{j=1}^G \sum_{i=1}^{n_j} \left( X_{ij} - \bar{X}_j \right)^2,
+    $$
+    where $N$ is the total number of observations and $G$ is the number of schools. (Note that $S_{within}^2$ is very similar to the sample variance of the group-mean centered test scores, but with degrees of freedom $N - G$ instead of $N - 1$. Consequently, one way to calculate $S_{within}^2$ is to calculate the sample variance of $\tilde{X}_{ij}$ and then multiply by $(N - 1) / (N - G)$.) 
+    
+```{r}
+# R code here
+pooled_within_school_sd <- STAR_g3 %>%
+  group_by(g1schid) %>%
+  summarise(
+    sd_g3treadss = sd(g3treadss, na.rm = T),
+    sd_g3tmathss = sd(g3tmathss, na.rm = T),
+    sd_g3tlangss = sd(g3tlangss, na.rm = T),
+    sd_g3tlistss = sd(g3tlistss, na.rm = T)
+  )
+
+# Print out the result
+pooled_within_school_sd
+```
+
+
+15. *[Bonus +1]*
+Calculate the __group-mean centered and scaled__ scores for each of the four test score variables, where the group-mean centered and scaled score is defined as the group-mean centered variables, scaled by the within-school standard deviation: 
+    $$
+    \hat{X}_{ij} = \frac{X_{ij} - \bar{X}_j}{S_{within}}
+    $$
+    
+```{r}
+# R code here
+centered_and_scaled_scores <- STAR_g3 %>%
+  drop_na(starts_with("g3t"))%>%
+  group_by(g1schid) %>%
+  group_by(g1schid) %>%
+  mutate(
+    centered_and_scaled_g3treadss = (g3treadss - mean(g3treadss, na.rm = T)) / sd(g3treadss, na.rm = T),
+    centered_and_scaled_g3tmathss = (g3tmathss - mean(g3tmathss, na.rm = T)) / sd(g3tmathss, na.rm = T),
+    centered_and_scaled_g3tlangss = (g3tlangss - mean(g3tlangss, na.rm = T)) / sd(g3tlangss, na.rm = T),
+    centered_and_scaled_g3tlistss = (g3tlistss - mean(g3tlistss, na.rm = T)) / sd(g3tlistss, na.rm = T)
+  )
+
+
+head(centered_and_scaled_scores)
+```
+
+16. *[Bonus +1]*
+Using the group-mean centered and scaled math scores, calculate the number of students from urban, suburban, and rural schools whose math test score is more than 2.5 standard deviations above or below the average test scores of students in their school. 
+
+```{r}
+# R code here
+threshold <- 2.5
+
+outliers <- centered_and_scaled_scores %>%
+  filter(g1surban %in% c("URBAN","SUBURBAN", "RURAL"))%>%
+  group_by(g1surban) %>%
+  filter(
+    centered_and_scaled_g3tmathss > threshold | 
+      centered_and_scaled_g3tmathss < -threshold
+  ) %>%
+  summarise(number_of_outliers = n())
+
+outliers
+```
+
+
+
+
+
+
+# Visualization
+
+
+Each question involves creating a visual representation of a dataset. In developing your visualizations, you should follow the principles of good statistical graphics by ensuring that:
+
+* axes, legends, and titles always have clear and sensible labels;
+* the axes have sensible ranges and scales;
+* relevant aspects of the data are not concealed (e.g., overlapping density plots are drawn so that each is clearly visible);
+* it is easy to make comparisons between relevant quantities (e.g., categories to be compared should be close to each other);
+
+In compiling the Rmarkdown file for this assignment, you might find it useful to change the default settings for the size of figures that are generated in a code chunk. For example, the following code displays a histogram of the number of goals scored by each player in the soccer fouls dataset. In the curly brackets at the beginning of the code chunk, I have set the `fig.width` and `fig.height` options to control the size of the resulting figure. Try changing the settings yourself and see what happens.
+
+```{r, fig.width = 10, fig.height = 3.5}
+library(ggplot2)
+qplot(goals, data = Soccer_fouls) + theme_minimal()
+```
+
+
+## Soccer data (5 pt)
+
+This question deals with the data on soccer players and the number of yellow and red cards they receive, which is saved in the `soccer_fouls` data frame.
+
+1. Calculate the average number of foul cards (of any color: `yellowCards`, `redCards`, and `yellowReds`) that each player receives __per game__ (e.g., Bastian Schweinsteiger of Bayern-Muenchen had 93 cards in 611 games, or `r 93/611` cards per game). 
+```{r}
+average_cards_per_game <- Soccer_fouls%>%
+  mutate(total_cards = yellowCards + redCards + yellowReds,
+         cards_per_game= total_cards/games) #%>%
+  
+head(average_cards_per_game[,c("player","cards_per_game")],10)
+
+```
+
+
+2. Create a density plot of the distribution of this quantity, with separate densities displayed for each league/Country. 
+```{r fig.width = 10, fig.height = 3.5}
+# Create a density plot
+ggplot(average_cards_per_game, aes(x = cards_per_game, fill = leagueCountry)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Average Foul Cards per Game",
+       x = "Average Foul Cards per Game",
+       caption = "fig:1 Density Plot of Average Foul Cards per Game by League/Country",
+       y = "Density") +
+  theme_minimal()
+```
+
+
+3. Check for outliers (e.g., outside of 1st and 3rd quartiles; or any operational definition of outliers from you) and revise your graph accordingly.
+```{r fig.width = 7, fig.height = 3.5}
+##find Q1, Q3, and interquartile range for values in column cards_per_game
+Q1 <- quantile(average_cards_per_game$cards_per_game, .25)
+Q3 <- quantile(average_cards_per_game$cards_per_game, .75)
+IQR <- IQR(average_cards_per_game$cards_per_game)
+
+#only keep rows in dataframe that have values within 1.5*IQR of Q1 and Q3
+no_outliers <- subset(average_cards_per_game, average_cards_per_game$cards_per_game> (Q1 - 1.5*IQR) & average_cards_per_game$cards_per_game< (Q3 + 1.5*IQR))
+
+# Create a density plot
+ggplot(no_outliers, aes(x = cards_per_game, fill = leagueCountry)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Average Foul Cards per Game",
+       x = "Average Foul Cards per Game",
+       caption = "fig:2 Density Plot of Average Foul Cards per Game by League/Country with no outliers",
+       y = "Density") +
+  theme_minimal()
+
+```
+
+
+4. Interpret the graph: Which league appears to have the highest average number of fouls per game?
+
+
+*Explain your interpretation here.*
+  The English league has the highest average number of fouls per game. This is indicated by the highest density at around 0.2 average foul cards per game for the English league (represented in green). The French and Spanish leagues have lower densities, indicating fewer average fouls per game. 
+
+
+## Ways to improve public education (4 pt)
+
+This question deals with the data from the State of the City poll conducted by the Pew Center, which is saved in the `City_poll` data frame. 
+
+Questions 18a through 18d all start with the stem "Please tell me what impact you think each of the following changes would have on improving the quality of public education in your community...." The responses were coded so that 1 = "Better," 2 = "About the same," 3 = "Worse," 8 = "Don't know," and 9 = "Refused." 
+
+1. Reformat these variables as factors with informative labels. (NOTE. Don't forget to re-code missing data.)
+```{r }
+df <- City_poll%>%
+  mutate_at(vars(q18a:q18d), ~factor(.x, 
+                                     levels = c(1, 2, 3, 8, 9),
+                                     labels = c("Better", "About the same", "Worse", "Don't know", "Refused"),
+                                     exclude = NULL))
+
+df%>%
+  select(q18a:q18d)%>%
+  head()
+```
+
+2. Create a bar chart or set of bar charts that display the distribution of responses to each of these questions. The figure should make it easy to compare the respondents' views about which proposals would be effective.
+```{r }
+p1<-df %>%
+  select(q18a, q18b, q18c, q18d) %>%
+  gather(key = "Question", value = "Response") %>%
+  ggplot(aes(x = Response, fill = Response)) +
+  geom_bar() +
+  facet_wrap(~ Question, scales = "free_y") +
+  theme_minimal() +
+  labs(x = "Response", y = "Count", fill = "Response",
+       title = "Distribution of Responses to Questions 18a through 18d",
+       caption  = "fig3: Please tell me what impact you think each of the following changes would have on improving the quality of public education in your community")
+
+```
+
+3. Interpret the graph: Which of the proposals is most widely view as effective? Which is most widely viewed as detrimental?
+
+```{r fig.width = 10, fig.height = 3.5}
+# R code here
+p1
+```
+
+*Explain your interpretation here.*
+
+The proposal that is most widely viewed as effective is that students should have sames classes. Linking the pay for teachers and adminstartors to performance of the students is viewed as the most detrimental proposals.
+
+## Differing views by party (3 pt)
+
+Continuing with the same data as in the previous question, I have created the variable `party_leaning` that captures respondents' political orientation (it is a composite of the variables `party` and `partyln`). 
+
+```{r}
+table(City_poll$party_leaning, useNA = "always")
+```
+
+
+1. Create a bar chart or set of bar charts that display the distribution of responses to each of the *education items* (Q18) by political orientation, so that it is possible to compare differences between Democratic-leaning and Republican-leaning respondents' opinions about the effectiveness of each policy. 
+You can exclude the response categories other than "Democratic" and "Republican." (i.e., Treat thoes as `NA`)
+
+```{r fig.width = 10, fig.height = 3.5, echo=FALSE}
+
+#republicans
+repub<- df%>%
+  filter(party_leaning=="Republican")
+
+repub %>%
+  select(q18a, q18b, q18c, q18d) %>%
+  gather(key = "Question", value = "Response") %>%
+  ggplot(aes(x = Response, fill = Response)) +
+  geom_bar() +
+  facet_wrap(~ Question, scales = "free_y") +
+  theme_minimal() +
+  labs(x = "Response", y = "Count", fill = "Response",
+       title = "Distribution of Responses by Republican",
+       caption =  "fig4: Please tell me what impact you think each of the following changes would have on improving the quality of public education in your community")
+
+
+#Democratic
+Demo<- df%>%
+  filter(party_leaning=="Democratic")
+
+Demo%>%
+  select(q18a, q18b, q18c, q18d) %>%
+  gather(key = "Question", value = "Response") %>%
+  ggplot(aes(x = Response, fill = Response)) +
+  geom_bar() +
+  facet_wrap(~ Question, scales = "free_y") +
+  theme_minimal() +
+  labs(x = "Response", y = "Count", fill = "Response",
+       title = "Distribution of Responses by Democratic",
+       caption  = "fig 5: Please tell me what impact you think each of the following changes would have on improving the quality of public education in your community")
+
+```
+
+
+2. Interpret the graph: Which of the proposals is most widely view as effective by Republicans? by Democrats? For which of the proposals is there the greatest discrepancy between the opinions of Democrats and Republicans? 
+
+*Explain your interpretation here.*
+Both republicans and Democratic seems to agree on most of the proposals. There are no major discrepancies between the two parties. Both parties feel that having smaller classes is more effective. And are all aganist having longer school days. 
